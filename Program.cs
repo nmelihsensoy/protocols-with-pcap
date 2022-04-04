@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using System.Threading;
 using System.Collections.Generic;
 using PcapDotNet.Core;
@@ -9,7 +10,7 @@ using PcapDotNet.Packets.IpV4;
 using PcapDotNet.Packets.Transport;
 using PcapDotNet.Core.Extensions;
 
-namespace my_nslookup
+namespace udp_messaging
 {
     class Program
     {
@@ -19,7 +20,7 @@ namespace my_nslookup
         static IpV4Address sourceIP;
         static IpV4Address destinationIP;
         static LivePacketDevice selectedDevice;
-        static DnsDomainName queryDomainName;
+        static string userMessage = "Connected. Initial Message";
 
         static void Main(string[] args)
         {
@@ -81,24 +82,22 @@ namespace my_nslookup
             sourceMAC = LivePacketDeviceExtensions.GetMacAddress(selectedDevice);
             sourceIP = new IpV4Address(sourceIP_str);
 
-            if (args.Length == 4)
+            if (args.Length == 3)
             {
                 destinationMAC = new MacAddress(args[1]);
                 destinationIP = new IpV4Address(args[2]);
-                queryDomainName = new DnsDomainName(args[3]);
             }
             else
             {
                 destinationMAC = new MacAddress("20:b3:99:55:90:d7"); //ipconfig /all -> Default Gateway -> arp -a
-                destinationIP = new IpV4Address("1.1.1.1");
-                queryDomainName = new DnsDomainName("duckduckgo.com");
+                destinationIP = new IpV4Address("127.0.0.1");
             }
 
-            Thread responseListener = new Thread(ResponseListener);
-            Thread querySender = new Thread(DnsQuery);
+            Thread messageListener = new Thread(MsgListener);
+            Thread messageSender = new Thread(MsgSender);
 
-            responseListener.Start();
-            querySender.Start();
+            messageListener.Start();
+            messageSender.Start();
         }
 
         private static String GetIpFromDev(ref LivePacketDevice dev)
@@ -114,7 +113,7 @@ namespace my_nslookup
             return null;
         }
 
-        private static void DnsQuery()
+        private static void MsgSender()
         {
             // Open the output device
             using (PacketCommunicator communicator = selectedDevice.Open(100, // name of the device
@@ -124,80 +123,17 @@ namespace my_nslookup
                 // for (ushort i = 0; i < times; i++)
                 while (true)
                 {
-                    var queryPackage = BuildDnsPacket();
-                    Console.WriteLine("Press [Enter] to send a new query.");
-                    communicator.SendPacket(queryPackage);
-                    Console.ReadLine();
+                    var queryPackage = BuildUdpPacket();
+                    communicator.SendPacket(queryPackage); 
+                    Console.WriteLine("Press [Enter] to send your message.");
+                    userMessage = Console.ReadLine();
                 }
             }
         }
 
-        private static Packet BuildDnsPacket()
+        private static void MsgListener()
         {
-            EthernetLayer ethernetLayer =
-                new EthernetLayer
-                {
-                    Source = sourceMAC,
-                    Destination = destinationMAC,
-                    EtherType = EthernetType.None, // Will be filled automatically.
-                };
 
-            IpV4Layer ipV4Layer =
-                new IpV4Layer
-                {
-                    Source = sourceIP,
-                    CurrentDestination = destinationIP,
-                    Fragmentation = IpV4Fragmentation.None,
-                    HeaderChecksum = null, // Will be filled automatically.
-                    Identification = 123,
-                    Options = IpV4Options.None,
-                    Protocol = null, // Will be filled automatically.
-                    Ttl = 100,
-                    TypeOfService = 0,
-                };
-
-            UdpLayer udpLayer =
-                new UdpLayer
-                {
-                    SourcePort = 4050,
-                    DestinationPort = 53,
-                    Checksum = null, // Will be filled automatically.
-                    CalculateChecksumValue = true,
-                };
-
-            DnsLayer dnsLayer =
-                new DnsLayer
-                {
-                    Id = 100,
-                    IsResponse = false,
-                    OpCode = DnsOpCode.Query,
-                    IsAuthoritativeAnswer = false,
-                    IsTruncated = false,
-                    IsRecursionDesired = true,
-                    IsRecursionAvailable = false,
-                    FutureUse = false,
-                    IsAuthenticData = false,
-                    IsCheckingDisabled = false,
-                    ResponseCode = DnsResponseCode.NoError,
-                    Queries = new[]
-                    {
-                    new DnsQueryResourceRecord(queryDomainName,
-                                                DnsType.A,
-                                                DnsClass.Internet),
-                    },
-                    Answers = null,
-                    Authorities = null,
-                    Additionals = null,
-                    DomainNameCompressionMode = DnsDomainNameCompressionMode.All,
-                };
-
-            PacketBuilder builder = new PacketBuilder(ethernetLayer, ipV4Layer, udpLayer, dnsLayer);
-
-            return builder.Build(DateTime.Now);
-        }
-
-        static void ResponseListener()
-        {
             // Open the device
             using (PacketCommunicator communicator =
                 selectedDevice.Open(65536,                                  // portion of the packet to capture
@@ -213,7 +149,7 @@ namespace my_nslookup
                 }
 
                 // Compile the filter
-                using (BerkeleyPacketFilter filter = communicator.CreateFilter("udp and src host " + destinationIP.ToString() + " and dst host " + sourceIP_str))
+                using (BerkeleyPacketFilter filter = communicator.CreateFilter("udp and src host " + destinationIP.ToString() + " and dst host " + sourceIP_str + " and src port 4050")) 
                 {
                     // Set the filter
                     communicator.SetFilter(filter);
@@ -226,6 +162,50 @@ namespace my_nslookup
             }
         }
 
+        private static Packet BuildUdpPacket()
+        {
+            EthernetLayer ethernetLayer =
+                new EthernetLayer
+                {
+                    Source = sourceMAC,
+                    Destination = destinationMAC,
+                    EtherType = EthernetType.None, // Will be filled automatically.
+                };
+
+            IpV4Layer ipV4Layer =
+                new IpV4Layer
+                {
+                    Source = sourceIP, //1.2.3.4
+                    CurrentDestination = destinationIP,//11.22.33.44
+                    Fragmentation = IpV4Fragmentation.None,
+                    HeaderChecksum = null, // Will be filled automatically.
+                    Identification = 123,
+                    Options = IpV4Options.None,
+                    Protocol = null, // Will be filled automatically.
+                    Ttl = 100,
+                    TypeOfService = 0,
+                };
+
+            UdpLayer udpLayer =
+                new UdpLayer
+                {
+                    SourcePort = 4050,
+                    DestinationPort = 25,
+                    Checksum = null, // Will be filled automatically.
+                    CalculateChecksumValue = true,
+                };
+
+            PayloadLayer payloadLayer =
+                new PayloadLayer
+                {
+                    Data = new Datagram(Encoding.ASCII.GetBytes(userMessage)),
+                };
+
+            PacketBuilder builder = new PacketBuilder(ethernetLayer, ipV4Layer, udpLayer, payloadLayer);
+
+            return builder.Build(DateTime.Now);
+        }
+
         // Callback function invoked by libpcap for every incoming packet
         private static void PacketHandler(Packet packet)
         {
@@ -234,17 +214,8 @@ namespace my_nslookup
 
             IpV4Datagram ip = packet.Ethernet.IpV4;
             UdpDatagram udp = ip.Udp;
-            DnsDatagram dns = udp.Dns;
 
-            Console.Write("| " + ip.Source + ":" + udp.SourcePort + " -> " + ip.Destination + ":" + udp.DestinationPort + "\n");
-
-            foreach (var value in dns.Answers)
-            {
-                //Console.WriteLine("##DNS##: " + value.DomainName + " ## "+ (value.Data as DnsResourceDataIpV4).Data.ToString());
-                Console.WriteLine("Name:    {0}", value.DomainName);
-                Console.WriteLine("Address:  {0}", (value.Data as DnsResourceDataIpV4).Data.ToString());
-                Console.WriteLine();
-            }
+            Console.Write("| " + ip.Source + ":" + udp.SourcePort + " -> " + ip.Destination + ":" + udp.DestinationPort + "\n MSG: " + udp.Payload.Decode(Encoding.Default) + "\n\n");
         }
     }
 }
