@@ -2,7 +2,7 @@
 
 This is an example to show how to create a DNS lookup tool with using `Pcap.Net` library for `WinPcap` available devices. Created for educational purposes.
 
-[Udp messaging example](tree/udp-messaging) is also available as a branch. Click  [here](tree/udp-messaging) to check it out.
+[Udp messaging example](../../tree/udp-messaging) is also available as a branch. Click  [here](../../tree/udp-messaging) to check it out.
 
 https://user-images.githubusercontent.com/1637572/160906084-88a6e470-f8e3-4aca-aca6-42fe6c5d5304.mp4
 
