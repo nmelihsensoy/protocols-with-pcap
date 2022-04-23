@@ -3,6 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net5.0</TargetFramework>
+    <RootNamespace>coap-like-protocol</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -18,5 +19,5 @@
     <Reference Include="PcapDotNet.Packets">
       <HintPath>$(ProjectDir)libs\PcapDotNet.Binaries.1.0.4\PcapDotNet.Binaries.1.0.4.x64\PcapDotNet.Packets.dll</HintPath>
     </Reference>
-  </ItemGroup>
+  </ItemGroup>  
 </Project>
