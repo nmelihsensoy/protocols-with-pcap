@@ -1,4 +1,4 @@
-﻿namespace http_client
+﻿namespace template
 {
     class Program
     {
