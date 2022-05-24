@@ -38,7 +38,7 @@ namespace http_client
             Tolerant
         }
 
-        public static (LivePacketDevice, MandatoryAddresses) InitInterface(InitModes mode, InitBehavior behavior, int provisioning_dev)
+        public static (LivePacketDevice device, MandatoryAddresses addresses) InitInterface(InitModes mode, InitBehavior behavior, int provisioning_dev)
         {
             LivePacketDevice? returnDev = null;
             MandatoryAddresses returnAddr = new MandatoryAddresses();
