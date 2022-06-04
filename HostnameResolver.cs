@@ -9,6 +9,13 @@ namespace http_client
 {
     public class HostnameResolver
     {
+        public enum ResolverStates
+        {
+            IP_ALREADY,
+            RESOLVED,
+            ERROR
+        }
+
         private MandatoryAddresses _addresses;
         private LivePacketDevice _interface;
 
@@ -23,6 +30,38 @@ namespace http_client
             _addresses = addresses;
             _interface = @interface;
             _addresses.DestIP = new IpV4Address(addr);
+        }
+
+        public IpV4Address GetIpFromInput(string input)
+        {
+            ResolverStates tmpState;
+            return GetIpFromInput(input, out tmpState);
+        }
+
+        public IpV4Address GetIpFromInput(string input, out ResolverStates state)
+        {
+            IpV4Address DestIP;
+            IpV4Address.TryParse(input, out DestIP);
+
+            if (DestIP == IpV4Address.Zero)
+            {      
+                try
+                {
+                    DestIP = this.Resolve(input);
+                    state = ResolverStates.RESOLVED;
+                }
+                catch (Exception)
+                {
+                    DestIP = IpV4Address.Zero;
+                    state = ResolverStates.ERROR;
+                }
+            }
+            else
+            {
+                state = ResolverStates.IP_ALREADY;
+            }
+
+            return DestIP;
         }
 
         public IpV4Address Resolve(string hostname)
@@ -53,7 +92,7 @@ namespace http_client
                 {
                     try
                     {
-                        return (value.Data as DnsResourceDataIpV4).Data;
+                        return (value.Data as DnsResourceDataIpV4)!.Data;
                     }
                     catch (Exception)
                     {

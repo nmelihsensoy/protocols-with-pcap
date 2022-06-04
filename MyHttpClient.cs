@@ -22,6 +22,7 @@ namespace http_client
         {
             _addresses = addresses;
             _interface = @interface;
+            _host = String.Empty;
         }
 
         public MyHttpClient(MandatoryAddresses addresses, LivePacketDevice @interface, string addr)
@@ -29,6 +30,7 @@ namespace http_client
             _addresses = addresses;
             _interface = @interface;
             _addresses.DestIP = new IpV4Address(addr);
+            _host = String.Empty;
         }
 
         public void GetSync(string addr)
@@ -81,30 +83,30 @@ namespace http_client
 
                 // 3-Way Handshake Complete
                 // HTTP GET
-                Packet tmpPacket2 = BuildHttpPacket(REQ_PORT, SEQ, ACK, TcpControlBits.Push|TcpControlBits.Acknowledgment, _host, HttpRequestKnownMethod.Get);
-                communicator.SendPacket(tmpPacket2);
-                ACK_WAITING = (uint)(SEQ + tmpPacket2.Ethernet.IpV4.Tcp.PayloadLength);
+                tmpPacket = BuildHttpPacket(REQ_PORT, SEQ, ACK, TcpControlBits.Push|TcpControlBits.Acknowledgment, _host, HttpRequestKnownMethod.Get);
+                communicator.SendPacket(tmpPacket);
+                ACK_WAITING = (uint)(SEQ + tmpPacket.Ethernet.IpV4.Tcp.PayloadLength);
 
                 // WAIT ACK
-                Packet tmpPacket4 = WaitForACKPacket(communicator, ACK_WAITING);
+                tmpPacket = WaitForACKPacket(communicator, ACK_WAITING);
 
                 // WAIT HTTP OK
-                Packet tmpPacket3 = WaitForOK(communicator, ACK_WAITING);
+                tmpPacket = WaitForOK(communicator, ACK_WAITING);
                 SEQ = ACK_WAITING;
-                ACK = (uint)(tmpPacket3.Ethernet.IpV4.Tcp.SequenceNumber + tmpPacket3.Ethernet.IpV4.Tcp.PayloadLength);
-                PrintContent(tmpPacket3.Ethernet.IpV4.Tcp.Http);
+                ACK = (uint)(tmpPacket.Ethernet.IpV4.Tcp.SequenceNumber + tmpPacket.Ethernet.IpV4.Tcp.PayloadLength);
+                PrintContent(tmpPacket.Ethernet.IpV4.Tcp.Http);
 
                 // SEND FIN+ACK
-                Packet tmpPacket6 = BuildTcpPacket(REQ_PORT, SEQ, ACK, TcpControlBits.Fin | TcpControlBits.Acknowledgment);
-                communicator.SendPacket(tmpPacket6);
-                ACK_WAITING = tmpPacket6.Ethernet.IpV4.Tcp.SequenceNumber + 1;
+                tmpPacket = BuildTcpPacket(REQ_PORT, SEQ, ACK, TcpControlBits.Fin | TcpControlBits.Acknowledgment);
+                communicator.SendPacket(tmpPacket);
+                ACK_WAITING = tmpPacket.Ethernet.IpV4.Tcp.SequenceNumber + 1;
 
                 // WAIT FIN+ACK
-                Packet tmpPacket7 = WaitForACKPacket(communicator, ACK_WAITING);
+                tmpPacket = WaitForACKPacket(communicator, ACK_WAITING);
 
                 // ACK
                 SEQ = ACK_WAITING;
-                ACK = tmpPacket7.Ethernet.IpV4.Tcp.SequenceNumber + 1;
+                ACK = tmpPacket.Ethernet.IpV4.Tcp.SequenceNumber + 1;
                 communicator.SendPacket(BuildTcpPacket(REQ_PORT, SEQ, ACK, TcpControlBits.Acknowledgment));
             }
         }

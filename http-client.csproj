@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -6,21 +6,10 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <Platforms>AnyCPU;x64</Platforms>
   </PropertyGroup>
 
-	<ItemGroup>
-		<Reference Include="PcapDotNet.Base">
-			<HintPath>$(ProjectDir)libs\PcapDotNet.Binaries.1.0.4\PcapDotNet.Binaries.1.0.4.x64\PcapDotNet.Base.dll</HintPath>
-		</Reference>
-		<Reference Include="PcapDotNet.Core">
-			<HintPath>$(ProjectDir)libs\PcapDotNet.Binaries.1.0.4\PcapDotNet.Binaries.1.0.4.x64\PcapDotNet.Core.dll</HintPath>
-		</Reference>
-		<Reference Include="PcapDotNet.Core.Extensions">
-			<HintPath>$(ProjectDir)libs\PcapDotNet.Binaries.1.0.4\PcapDotNet.Binaries.1.0.4.x64\PcapDotNet.Core.Extensions.dll</HintPath>
-		</Reference>
-		<Reference Include="PcapDotNet.Packets">
-			<HintPath>$(ProjectDir)libs\PcapDotNet.Binaries.1.0.4\PcapDotNet.Binaries.1.0.4.x64\PcapDotNet.Packets.dll</HintPath>
-		</Reference>
-	</ItemGroup>
-
+  <ItemGroup>
+    <PackageReference Include="Pcap.Net.x64" Version="1.0.4.1" />
+  </ItemGroup>
 </Project>

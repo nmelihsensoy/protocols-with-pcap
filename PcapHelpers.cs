@@ -16,7 +16,6 @@ namespace http_client
 
     public class PcapHelpers
     {
-
         public enum DefaultAddressState
         {
             Success,
