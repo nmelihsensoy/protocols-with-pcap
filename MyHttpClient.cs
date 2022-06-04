@@ -60,7 +60,7 @@ namespace http_client
             ushort REQ_PORT = GetEphemeralPort();
             string ACK_waitingFilter = "tcp and src " + _addresses.DestIP + " and src port 80 and dst port " + REQ_PORT;
             _host = _addresses.DestIP.ToString();
-            Packet tmpPacket;
+            Stack<Packet> packetStack = new Stack<Packet>();
 
             using (PacketCommunicator communicator = _interface.Open(65536, PacketDeviceOpenAttributes.Promiscuous, 100))
             {
@@ -71,43 +71,42 @@ namespace http_client
                 ACK_WAITING = ACK + 1;
 
                 // WAIT SYN+ACK
-                tmpPacket = WaitForACKPacket(communicator, ACK_WAITING);
-                if (tmpPacket.IsValid)
-                {
-                    SEQ = ACK_WAITING;
-                    ACK = tmpPacket.Ethernet.IpV4.Tcp.SequenceNumber + 1;
-                }else { /*HANDSHAKE ERROR*/ }
+                packetStack.Push(WaitForACKPacket(communicator, ACK_WAITING));
+                SEQ = ACK_WAITING;
+                ACK = packetStack.Pop().Ethernet.IpV4.Tcp.SequenceNumber + 1;
 
                 // SEND ACK
                 communicator.SendPacket(BuildTcpPacket(REQ_PORT, SEQ, ACK, TcpControlBits.Acknowledgment));
 
                 // 3-Way Handshake Complete
                 // HTTP GET
-                tmpPacket = BuildHttpPacket(REQ_PORT, SEQ, ACK, TcpControlBits.Push|TcpControlBits.Acknowledgment, _host, HttpRequestKnownMethod.Get);
-                communicator.SendPacket(tmpPacket);
-                ACK_WAITING = (uint)(SEQ + tmpPacket.Ethernet.IpV4.Tcp.PayloadLength);
+                packetStack.Push(BuildHttpPacket(REQ_PORT, SEQ, ACK, TcpControlBits.Push | TcpControlBits.Acknowledgment, _host, HttpRequestKnownMethod.Get));
+                communicator.SendPacket(packetStack.Peek());
+                ACK_WAITING = (uint)(SEQ + packetStack.Pop().Ethernet.IpV4.Tcp.PayloadLength);
 
                 // WAIT ACK
-                tmpPacket = WaitForACKPacket(communicator, ACK_WAITING);
+                WaitForACKPacket(communicator, ACK_WAITING);
 
                 // WAIT HTTP OK
-                tmpPacket = WaitForOK(communicator, ACK_WAITING);
+                packetStack.Push(WaitForOK(communicator, ACK_WAITING));
                 SEQ = ACK_WAITING;
-                ACK = (uint)(tmpPacket.Ethernet.IpV4.Tcp.SequenceNumber + tmpPacket.Ethernet.IpV4.Tcp.PayloadLength);
-                PrintContent(tmpPacket.Ethernet.IpV4.Tcp.Http);
+                ACK = (uint)(packetStack.Peek().Ethernet.IpV4.Tcp.SequenceNumber + packetStack.Peek().Ethernet.IpV4.Tcp.PayloadLength);
+                PrintContent(packetStack.Pop().Ethernet.IpV4.Tcp.Http);
 
                 // SEND FIN+ACK
-                tmpPacket = BuildTcpPacket(REQ_PORT, SEQ, ACK, TcpControlBits.Fin | TcpControlBits.Acknowledgment);
-                communicator.SendPacket(tmpPacket);
-                ACK_WAITING = tmpPacket.Ethernet.IpV4.Tcp.SequenceNumber + 1;
+                packetStack.Push(BuildTcpPacket(REQ_PORT, SEQ, ACK, TcpControlBits.Fin | TcpControlBits.Acknowledgment));
+                communicator.SendPacket(packetStack.Peek());
+                ACK_WAITING = packetStack.Pop().Ethernet.IpV4.Tcp.SequenceNumber + 1;
 
                 // WAIT FIN+ACK
-                tmpPacket = WaitForACKPacket(communicator, ACK_WAITING);
+                packetStack.Push(WaitForACKPacket(communicator, ACK_WAITING));
 
                 // ACK
                 SEQ = ACK_WAITING;
-                ACK = tmpPacket.Ethernet.IpV4.Tcp.SequenceNumber + 1;
+                ACK = packetStack.Pop().Ethernet.IpV4.Tcp.SequenceNumber + 1;
                 communicator.SendPacket(BuildTcpPacket(REQ_PORT, SEQ, ACK, TcpControlBits.Acknowledgment));
+
+                packetStack.Clear();
             }
         }
 
