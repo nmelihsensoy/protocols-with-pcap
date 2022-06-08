@@ -1,102 +1,116 @@
-# my-nslookup
+# Http Client
 
-This is an example to show how to create a DNS lookup tool with using `Pcap.Net` library for `WinPcap` available devices. Created for educational purposes.
+This is an example to show how to create HTTP's GET request with constructing and capturing network packets using the `Pcap.Net` library for `WinPcap` available devices. Created for educational purposes.
 
-[Udp messaging example](../../tree/udp-messaging) is also available as a branch. Click  [here](../../tree/udp-messaging) to check it out.
+[COAP like protocol](../../tree/coap-like-protocol) is also available as a branch.
 
-https://user-images.githubusercontent.com/1637572/160906084-88a6e470-f8e3-4aca-aca6-42fe6c5d5304.mp4
+[UDP messaging example](../../tree/udp-messaging) is also available as a branch.
+
+[DNS Lookup example](../../tree/my-nslookup) is also available as a branch.
+
+Implementation contains 3 main proceses; 
+- Establishing a proper TCP connection with creating 3-Way Handshake and getting Ephemeral port from operating system's kernel.
+- Sending HTTP requests and waiting their responses over the TCP connection with the correct Sequence and Acknowledgement numbers.
+- Termination of the TCP connection.
+
+https://user-images.githubusercontent.com/1637572/172645464-31f4a71f-b21c-4310-8388-274fa3553186.mp4
 
 ## Build
 
 ```
-> cd my-nslookup
-> dotnet build
-
-Build succeeded.
-    0 Warning(s)
-    0 Error(s)
-
-Time Elapsed 00:00:00.71
+dotnet restore
+dotnet build
 ```
 
 ## Run
 
-1. Change directory into build output folder.
+Running with User Interaction mode. You will be asked for network interface selection and destination(ip or hostname) in this mode.
+```
+.\http-client.exe
+```
+Running with Destination Provisioning mode. You will be asked only for network interface selection.
 
 ```
-cd .\bin\Debug\net5.0\
+.\http-client.exe <ip or hostname>
 ```
 
-2. Display available network interfaces.
+Running with Provisioning mode. You will not be asked for anything.
 
 ```
-> .\my-nslookup.exe list
-
-0. rpcap://\Device\NPF_{C761E1B5-8C1D-4550-99A9-728FF545A3F6} (Network adapter 'Microsoft' on local host)
-[...]
-```
-Keep the corresponding number of the interface that you want to send and listen packets. `0` will be used as `<interface_id>` in forward. 
-
-*Optional. You can skip this.*
-Winpcap does not show the hardware name of your interfaces. Therefore you can cross check GUIDs to make sure that you are using the correct interface.
-
-```
-> getmac /fo csv /v
-
-"Wi-Fi","Intel(R) Wireless-AC 9260 160MHz","D6-41-13-B3-BC-73","\Device\Tcpip_{C761E1B5-8C1D-4550-99A9-728FF545A3F6}"
+.\http-client.exe <interface id> <ip or hostname>
 ```
 
-`{C761E1B5-8C1D-4550-99A9-728FF545A3F6}` make sure part in curly brackets are the same.
+## Examples
 
+### Request 1
 
-3. Find your default gateway's MAC address from your ARP table with the following commands. 
+More resources about this request can be found in [here](examples/request1/)
 
-```
-> ipconfig /all
-
-[...]
-Wireless LAN adapter Wi-Fi:
-    
-   Default Gateway . . . . . . . . . : 192.168.10.1
-   [...]
-
-> arp -a
-
-Interface: 192.168.8.211 --- 0xf
-  Internet Address      Physical Address      Type
-  192.168.10.1          20-b3-99-55-90-d7     dynamic
-  [...]
-```
-
-`20:b3:99:55:90:d7` is what we looking for. This address will be used as `<destination_mac>`.
-
-4. Start querying.
+<img src="./examples/request1/flow.png" height="350"/>
 
 ```
-> .\my-nslookup.exe <interface_id> <destination_mac> <destination_ip> <domain_name>
+> http-client.exe 0 google.com
+Internet 192.168.50.203
+Source IP: 192.168.50.203
+Source MAC: 0A:99:7C:15:7C:1B
+Destination MAC: 96:7F:DB:82:F0:16
+Destination IP: 142.250.187.174
+Host: google.com
+
+
+
+HTTP/1.1 301 Moved Permanently
+Location: http://www.google.com/
+Content-Type: text/html; charset=UTF-8
+Date: Tue, 07 Jun 2022 21:32:58 GMT
+Expires: Thu, 07 Jul 2022 21:32:58 GMT
+Cache-Control: public, max-age=2592000
+Server: gws
+Content-Length: 219
+X-XSS-Protection: 0
+X-Frame-Options: SAMEORIGIN
+
+<HTML><HEAD><meta http-equiv="content-type" content="text/html;charset=utf-8">
+<TITLE>301 Moved</TITLE></HEAD><BODY>
+<H1>301 Moved</H1>
+The document has moved
+<A HREF="http://www.google.com/">here</A>.
+</BODY></HTML>
 ```
-`<destination_ip>` is a DNS Server Ip. `8.8.8.8`, `1.1.1.1` are the popular public services. Could be one of these.
-`<domain_name>` is a domain name that you want to learn it's Ip Address. Could be `duckduckgo.com`, `github.com`
 
-## Example Lookup
+### Request 2
+
+More resources about this request can be found in [here](examples/request2/)
+
+<img src="./examples/request2/flow.png" height="350"/>
 
 ```
-> .\my-nslookup.exe 0 20:b3:99:55:90:d7 8.8.8.8 duckduckgo.com
+> http-client.exe 0 192.168.50.160
+Internet 192.168.50.203
+Source IP: 192.168.50.203
+Source MAC: 0A:99:7C:15:7C:1B
+Destination MAC: 96:7F:DB:82:F0:16
+Destination IP: 192.168.50.160
 
-Internet 192.168.8.211
-Listening on Network adapter 'Microsoft' on local host...
 
-Press [Enter] to send a new query.
-2022-03-29 12:46:53.245| 8.8.8.8:53 -> 192.168.8.211:4050
-Name:    duckduckgo.com.
-Address:  40.114.177.156
+
+HTTP/1.1 200 OK
+Date: Tue, 07 Jun 2022 21:51:34 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+
+d
+Hello, World!
+0
 ```
 
 ## Dependencies
 
-* [.NET 5.0](https://dotnet.microsoft.com/en-us/download/dotnet/5.0)
+* [MSVC redistributables](https://docs.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist?view=msvc-170)
+* [.NET 6.0](https://dotnet.microsoft.com/en-us/download/dotnet/6.0)
 * [WinPcap driver](https://www.winpcap.org/).
-* [Pcap.Net](https://github.com/PcapDotNet/Pcap.Net) (32bit and 64bit versions included with the repo however 64bit version is used in the project.)
+* [Pcap.Net](https://github.com/PcapDotNet/Pcap.Net) (included with the repo)
 
 ## Credits
 
