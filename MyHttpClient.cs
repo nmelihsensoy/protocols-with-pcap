@@ -101,7 +101,7 @@ namespace http_client
                 // WAIT FIN+ACK
                 packetStack.Push(WaitForACKPacket(communicator, ACK_WAITING));
 
-                // ACK
+                // SEND ACK
                 SEQ = ACK_WAITING;
                 ACK = packetStack.Pop().Ethernet.IpV4.Tcp.SequenceNumber + 1;
                 communicator.SendPacket(BuildTcpPacket(REQ_PORT, SEQ, ACK, TcpControlBits.Acknowledgment));
